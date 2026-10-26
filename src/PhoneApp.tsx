@@ -22,7 +22,8 @@ export default function PhoneApp() {
     }
     setStatus('connecting')
     setError('')
-    const socket = new WebSocket(`ws://${window.location.hostname}:8787`)
+    const bridgeProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const socket = new WebSocket(`${bridgeProtocol}//${window.location.hostname}:8787`)
     socketRef.current = socket
     socket.onopen = () => socket.send(JSON.stringify({
       version: 1,
@@ -32,15 +33,20 @@ export default function PhoneApp() {
       deviceName: name.trim() || 'Android phone',
     }))
     socket.onmessage = (event) => {
-      const message = JSON.parse(event.data) as Message
-      if (message.type === 'paired') {
-        setStatus('paired')
-        setNotice('Your phone is now connected to Nexora.')
-      }
-      if (message.type === 'clipboard') setNotice(`Clipboard received from ${String(message.from || 'desktop')}`)
-      if (message.type === 'error') {
+      try {
+        const message = JSON.parse(event.data) as Message
+        if (message.type === 'paired') {
+          setStatus('paired')
+          setNotice('Your phone is now connected to Nexora.')
+        }
+        if (message.type === 'clipboard') setNotice(`Clipboard received from ${String(message.from || 'desktop')}`)
+        if (message.type === 'error') {
+          setStatus('error')
+          setError(String(message.message || 'Pairing failed.'))
+        }
+      } catch {
         setStatus('error')
-        setError(String(message.message || 'Pairing failed.'))
+        setError('The Windows app sent an invalid response.')
       }
     }
     socket.onerror = () => {

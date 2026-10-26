@@ -51,7 +51,11 @@ Open the local Vite URL shown in the terminal. The bridge prints a six-digit pai
 
 The Windows dashboard will change to **Connected now**. The phone page can send clipboard text through the live authenticated connection.
 
-If Windows Firewall asks about Node.js, allow private networks. Do not expose port `8787` or `5173` to public networks.
+If Windows Firewall asks about Node.js, allow access on **Private networks** for ports `5173` and `8787`. If the phone cannot open the page, run `ipconfig` again and make sure the phone is using the IPv4 address of the active Wi-Fi adapter, not a VPN or virtual adapter. Do not expose port `8787` or `5173` to public networks.
+
+The current browser client uses local Wi-Fi because browsers cannot provide a reliable Bluetooth
+transport between an Android phone and a Windows computer. Bluetooth support requires the planned
+native Windows shell and Android client; it is not enabled by the web UI.
 
 ### Test pairing without a phone
 
@@ -75,10 +79,34 @@ Replace `123456` with the actual code. The dashboard will change to **Connected 
 
 ## Next native integration steps
 
-1. Add a Tauri 2 Rust workspace and expose the existing bridge through commands/events.
-2. Add the Android Kotlin project with a pairing screen and a foreground WebSocket service.
+1. Install the Windows native prerequisites, then run `npm run tauri:build` to create the Windows `.msi` and `.exe` installers.
+2. Open `android` in Android Studio, sync Gradle, and run `app > assembleDebug` to create `android/app/build/outputs/apk/debug/app-debug.apk`.
 3. Exchange the existing short-lived pairing challenge over QR/manual code, then store device credentials in platform secure storage.
 4. Implement binary/chunked file transfer with checksums.
 5. Implement Android clipboard and notification permissions only after explicit user consent.
+
+### Native app builds
+
+The repository now includes:
+
+- `src-tauri/` — Tauri 2 Windows application shell. It packages the existing Nexora desktop UI as an installable Windows app.
+- `android/` — Kotlin Android application with a native pairing screen and WebSocket connection to the local bridge.
+
+Windows prerequisites:
+
+1. Install Rust with `rustup`, Visual Studio Build Tools with **Desktop development with C++**, and WebView2.
+2. Run `npm install`.
+3. Start the bridge with `npm run bridge`.
+4. Build the installer with `npm run tauri:build`.
+
+Android prerequisites:
+
+1. Install Android Studio and SDK Platform 35.
+2. Open the `android` folder in Android Studio and allow Gradle to sync.
+3. Build the debug APK with `gradlew.bat app:assembleDebug` from that folder.
+
+The first native release uses Wi-Fi. Bluetooth is deliberately not included in this scaffold yet;
+it needs a separate native transport implementation on both Windows and Android, plus pairing and
+permission UX.
 
 No cloud account is required for the local-first connection model. Sensitive features must remain opt-in and permission-gated.

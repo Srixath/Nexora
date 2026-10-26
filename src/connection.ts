@@ -36,7 +36,10 @@ export function useConnection(onMessage: (message: BridgeMessage) => void, devic
       socket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data) as BridgeMessage
-          if (message.type === 'paired' || message.type === 'device_connected') setStatus('paired')
+          // The desktop authenticates with the bridge too, but that is not the
+          // same thing as a phone being connected.
+          if (message.type === 'device_connected') setStatus('paired')
+          if (message.type === 'device_disconnected') setStatus('connecting')
           if (message.type === 'error') setLastError(String(message.message || message.code || 'Bridge error'))
           onMessageRef.current(message)
         } catch { setLastError('Received an invalid bridge message.') }

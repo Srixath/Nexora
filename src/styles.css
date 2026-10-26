@@ -151,6 +151,7 @@ h1 span { color: #f4b545; font-size: 20px; vertical-align: 2px; }
 .pairing-modal .eyebrow { margin-bottom: 7px; }
 .pairing-modal h2 { color: var(--ink); font: 700 21px Manrope, sans-serif; }
 .pairing-modal > p:not(.eyebrow) { margin: 9px auto 20px; color: var(--muted); font-size: 12px; line-height: 1.55; max-width: 290px; }
+.pairing-url { overflow-wrap: anywhere; margin: -8px auto 5px; color: var(--muted); font: 600 11px/1.4 Manrope, sans-serif; }
 .qr-placeholder { min-height: 136px; display: grid; place-items: center; gap: 8px; margin-bottom: 18px; border: 1px dashed #cbd2e7; border-radius: 12px; background: #fafbff; color: var(--muted); font-size: 10px; }
 .qr-pattern { width: 72px; height: 72px; opacity: .8; background: repeating-linear-gradient(45deg, #6876d8 0 4px, transparent 4px 9px), repeating-linear-gradient(-45deg, #6876d8 0 3px, transparent 3px 8px); }
 .pairing-code { padding: 12px 0 8px; color: #5362e9; font: 800 30px/1 Manrope, sans-serif; letter-spacing: 7px; }

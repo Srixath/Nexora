@@ -69,6 +69,16 @@ function App() {
   const connected = status === 'paired'
   const connectionLabel = status === 'paired' ? 'Connected now' : status === 'connecting' ? 'Connecting…' : 'Bridge offline'
   const connectColor = status === 'paired' ? 'online-dot' : 'offline-dot'
+  const phoneUrl = `${window.location.protocol}//${window.location.hostname || 'localhost'}:${window.location.port || '5173'}/phone`
+  const copyPairingDetails = async () => {
+    try {
+      await navigator.clipboard.writeText(`Open ${phoneUrl} on your phone and enter pairing code ${pairingCode}.`)
+      setPairing(false)
+      notify('Phone pairing instructions copied')
+    } catch {
+      notify(`Open ${phoneUrl} on your phone`)
+    }
+  }
 
   return (
     <div className={darkMode ? 'app dark' : 'app'}>
@@ -211,7 +221,7 @@ function App() {
         </div>
       </main>
 
-      {pairing && <div className="modal-backdrop" role="presentation" onClick={() => setPairing(false)}><div className="pairing-modal" role="dialog" aria-modal="true" aria-labelledby="pair-title" onClick={(event) => event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={() => setPairing(false)}><X size={18} /></button><div className="pairing-mark"><Smartphone size={25} /></div><p className="eyebrow">LOCAL CONNECTION</p><h2 id="pair-title">Pair a device</h2><p>Enter this one-time code in the Android Nexora client or the simulator. The bridge keeps the session local to this computer.</p><div className="pairing-code">{pairingCode || '------'}</div><div className="pairing-status">{lastError || 'Waiting for a device to pair…'}</div><button className="primary-button full" onClick={() => { setPairing(false); notify(pairingCode ? 'Pairing code copied to your clipboard' : 'Start the bridge first') }}>Done <Check size={16} /></button><button className="modal-secondary" onClick={() => setPairing(false)}>Close</button></div></div>}
+      {pairing && <div className="modal-backdrop" role="presentation" onClick={() => setPairing(false)}><div className="pairing-modal" role="dialog" aria-modal="true" aria-labelledby="pair-title" onClick={(event) => event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={() => setPairing(false)}><X size={18} /></button><div className="pairing-mark"><Smartphone size={25} /></div><p className="eyebrow">LOCAL CONNECTION</p><h2 id="pair-title">Pair a device</h2><p>On your phone, open this address while both devices are on the same Wi‑Fi, then enter the code below.</p><div className="pairing-url">{phoneUrl}</div><div className="pairing-code">{pairingCode || '------'}</div><div className="pairing-status">{lastError || 'Waiting for your phone to pair…'}</div><button className="primary-button full" onClick={copyPairingDetails}>Copy phone instructions <Clipboard size={16} /></button><button className="modal-secondary" onClick={() => setPairing(false)}>Close</button></div></div>}
       {toast && <div className="toast" role="status"><Check size={16} />{toast}</div>}
     </div>
   )
