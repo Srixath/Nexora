@@ -109,4 +109,13 @@ The first native release uses Wi-Fi. Bluetooth is deliberately not included in t
 it needs a separate native transport implementation on both Windows and Android, plus pairing and
 permission UX.
 
+### Download builds
+
+The GitHub Actions workflow builds a Windows installer and an Android debug APK. Pushes create
+downloadable workflow artifacts; pushing a version tag such as `v0.1.0` also creates a prerelease
+with the installer and APK attached. The Windows installer includes the local bridge runtime.
+
+The Android APK is a debug-signed development build intended for early device testing. Android
+may ask you to allow installation from the browser or file manager used to download it.
+
 No cloud account is required for the local-first connection model. Sensitive features must remain opt-in and permission-gated.

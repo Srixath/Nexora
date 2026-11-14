@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-export type ConnectionStatus = 'offline' | 'connecting' | 'paired'
+export type ConnectionStatus = 'offline' | 'connecting' | 'online' | 'paired'
 export type BridgeMessage = { type: string; [key: string]: unknown }
 
 export function useConnection(onMessage: (message: BridgeMessage) => void, deviceName = 'Nexora desktop') {
@@ -9,12 +9,14 @@ export function useConnection(onMessage: (message: BridgeMessage) => void, devic
   const pairingCodeRef = useRef('')
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
   const [pairingCode, setPairingCode] = useState('')
+  const [bridgeHost, setBridgeHost] = useState('')
   const [lastError, setLastError] = useState('')
 
   useEffect(() => { onMessageRef.current = onMessage }, [onMessage])
 
   useEffect(() => {
     let retryTimer: number | undefined
+    let pairingRetryTimer: number | undefined
     let closed = false
     const connect = () => {
       setStatus('connecting')
@@ -38,8 +40,9 @@ export function useConnection(onMessage: (message: BridgeMessage) => void, devic
           const message = JSON.parse(event.data) as BridgeMessage
           // The desktop authenticates with the bridge too, but that is not the
           // same thing as a phone being connected.
+          if (message.type === 'paired') setStatus('online')
           if (message.type === 'device_connected') setStatus('paired')
-          if (message.type === 'device_disconnected') setStatus('connecting')
+          if (message.type === 'device_disconnected') setStatus('online')
           if (message.type === 'error') setLastError(String(message.message || message.code || 'Bridge error'))
           onMessageRef.current(message)
         } catch { setLastError('Received an invalid bridge message.') }
@@ -51,18 +54,34 @@ export function useConnection(onMessage: (message: BridgeMessage) => void, devic
       }
     }
     const bridgeHost = window.location.hostname || '127.0.0.1'
-    fetch((import.meta.env.VITE_NEXORA_HTTP || `http://${bridgeHost}:8787`) + '/pairing')
-      .then((response) => response.json())
-      .then((data: { code?: string }) => {
-        pairingCodeRef.current = data.code || ''
-        setPairingCode(data.code || '')
-        if (socketRef.current?.readyState === WebSocket.OPEN && data.code) {
-          socketRef.current.send(JSON.stringify({ version: 1, type: 'pair', code: data.code, deviceId: 'nexora-desktop', deviceName }))
-        }
-      })
-      .catch(() => setLastError('Bridge is unavailable. Start npm run bridge.'))
+    const loadPairing = () => {
+      fetch((import.meta.env.VITE_NEXORA_HTTP || `http://${bridgeHost}:8787`) + '/pairing')
+        .then((response) => {
+          if (!response.ok) throw new Error('Bridge pairing endpoint is unavailable.')
+          return response.json()
+        })
+        .then((data: { code?: string; host?: string }) => {
+          pairingCodeRef.current = data.code || ''
+          setPairingCode(data.code || '')
+          setBridgeHost(data.host || window.location.hostname || 'localhost')
+          setLastError('')
+          if (socketRef.current?.readyState === WebSocket.OPEN && data.code) {
+            socketRef.current.send(JSON.stringify({ version: 1, type: 'pair', code: data.code, deviceId: 'nexora-desktop', deviceName }))
+          }
+        })
+        .catch(() => {
+          setLastError('Bridge is unavailable. Retrying…')
+          if (!closed) pairingRetryTimer = window.setTimeout(loadPairing, 2000)
+        })
+    }
+    loadPairing()
     connect()
-    return () => { closed = true; if (retryTimer) window.clearTimeout(retryTimer); socketRef.current?.close() }
+    return () => {
+      closed = true
+      if (retryTimer) window.clearTimeout(retryTimer)
+      if (pairingRetryTimer) window.clearTimeout(pairingRetryTimer)
+      socketRef.current?.close()
+    }
   }, [])
 
   const send = (message: Record<string, unknown>) => {
@@ -74,5 +93,5 @@ export function useConnection(onMessage: (message: BridgeMessage) => void, devic
     return true
   }
 
-  return { status, pairingCode, lastError, send }
+  return { status, pairingCode, bridgeHost, lastError, send }
 }

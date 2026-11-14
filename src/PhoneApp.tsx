@@ -1,30 +1,49 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
-import { Check, Clipboard, Smartphone, Wifi, X, Zap } from 'lucide-react'
 
 type Message = { type: string; [key: string]: unknown }
 
+function detectDeviceName() {
+  const userAgent = navigator.userAgent
+  if (/Android/i.test(userAgent)) {
+    const model = userAgent.match(/Android [^;]+;\s*([^;)]+?)(?:\s+Build\/[^;)]+)?[;)]/i)?.[1]?.trim()
+    return model && !/^(k|wv|mobile|unknown)$/i.test(model) ? model : 'Android phone'
+  }
+  if (/iPhone/i.test(userAgent)) return 'iPhone'
+  return 'My device'
+}
+
 export default function PhoneApp() {
   const [code, setCode] = useState('')
-  const [name, setName] = useState('My Android phone')
+  const [name, setName] = useState(detectDeviceName)
   const [status, setStatus] = useState<'idle' | 'connecting' | 'paired' | 'error'>('idle')
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
   const socketRef = useRef<WebSocket | null>(null)
+  const displayName = name.trim() || 'My device'
+
+  useEffect(() => {
+    type UserAgentData = { getHighEntropyValues?: (hints: string[]) => Promise<{ model?: string }> }
+    const userAgentData = (navigator as Navigator & { userAgentData?: UserAgentData }).userAgentData
+    userAgentData?.getHighEntropyValues?.(['model'])
+      .then((values) => { if (values.model?.trim()) setName(values.model.trim()) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => () => socketRef.current?.close(), [])
 
   const pair = (event: FormEvent) => {
     event.preventDefault()
     if (!/^\d{6}$/.test(code)) {
-      setError('Enter the six-digit code shown on the Windows app.')
+      setError('Enter the six-digit code shown on your laptop.')
       setStatus('error')
       return
     }
+
     setStatus('connecting')
     setError('')
-    const bridgeProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const socket = new WebSocket(`${bridgeProtocol}//${window.location.hostname}:8787`)
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const socket = new WebSocket(`${protocol}//${window.location.hostname}:8787`)
     socketRef.current = socket
+
     socket.onopen = () => {
       const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
       socket.send(JSON.stringify({
@@ -32,63 +51,57 @@ export default function PhoneApp() {
         type: 'pair',
         code,
         deviceId: `android-${id}`,
-        deviceName: name.trim() || 'Android phone',
+        deviceName: displayName,
       }))
     }
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as Message
-        if (message.type === 'paired') {
-          setStatus('paired')
-          setNotice('Your phone is now connected to Nexora.')
-        }
-        if (message.type === 'clipboard') setNotice(`Clipboard received from ${String(message.from || 'desktop')}`)
+        if (message.type === 'paired') setStatus('paired')
         if (message.type === 'error') {
           setStatus('error')
           setError(String(message.message || 'Pairing failed.'))
         }
       } catch {
         setStatus('error')
-        setError('The Windows app sent an invalid response.')
+        setError('The laptop sent an invalid response.')
       }
     }
     socket.onerror = () => {
       setStatus('error')
-      setError('Could not reach the Windows app. Keep both devices on the same Wi-Fi.')
+      setError('Could not connect to the laptop. Check that both devices are on the same Wi-Fi.')
     }
-    socket.onclose = () => { if (status !== 'paired') setStatus('idle') }
-  }
-
-  const sendClipboard = () => {
-    const text = window.prompt('Text to send to Windows')
-    if (!text || socketRef.current?.readyState !== WebSocket.OPEN) return
-    socketRef.current.send(JSON.stringify({ version: 1, type: 'clipboard', text }))
-    setNotice('Clipboard sent to Windows.')
+    socket.onclose = () => {
+      if (socketRef.current === socket) {
+        socketRef.current = null
+        setStatus((current) => current === 'paired' ? 'idle' : current)
+      }
+    }
   }
 
   return (
-    <div className="phone-app">
-      <header className="phone-app-header"><div className="brand"><div className="brand-mark"><Zap size={17} fill="currentColor" /></div><span>Nexora</span></div><span className="local-pill"><Wifi size={13} /> Local only</span></header>
-      <main className="phone-app-main">
-        <div className="phone-app-icon"><Smartphone size={30} /></div>
-        <p className="eyebrow">ANDROID COMPANION</p>
-        <h1>{status === 'paired' ? 'You’re connected.' : 'Connect your phone.'}</h1>
-        <p className="phone-app-subtitle">{status === 'paired' ? 'Nexora is ready to share clipboard and activity with your Windows PC.' : 'Keep this page open while pairing. Your data stays on your local Wi-Fi network.'}</p>
+    <main className="phone-app">
+      <section className="phone-app-main">
+        <p className="eyebrow">NEXORA</p>
         {status === 'paired' ? (
-          <section className="phone-connected-card"><div className="phone-connected-icon"><Check size={22} /></div><div><strong>Connected to Windows</strong><span>Nexora desktop is online</span></div><button onClick={sendClipboard}><Clipboard size={17} /> Send clipboard</button></section>
+          <>
+            <h1>{displayName} connected</h1>
+            <p className="phone-app-subtitle" role="status">Your phone is connected to the laptop.</p>
+          </>
         ) : (
-          <form className="phone-pair-form" onSubmit={pair}>
-            <label htmlFor="phone-name">Phone name</label>
-            <input id="phone-name" value={name} onChange={(event) => setName(event.target.value)} />
-            <label htmlFor="pair-code">Pairing code</label>
-            <input id="pair-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))} />
-            {error && <div className="phone-error"><X size={15} />{error}</div>}
-            <button className="phone-pair-button" type="submit" disabled={status === 'connecting'}>{status === 'connecting' ? 'Connecting…' : 'Connect to Windows'}</button>
-          </form>
+          <>
+            <h1>Connect your phone</h1>
+            <form className="phone-pair-form" onSubmit={pair}>
+              <label htmlFor="pair-code">Pairing code</label>
+              <input id="pair-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))} />
+              {error && <div className="phone-error" role="alert">{error}</div>}
+              <button className="phone-pair-button" type="submit" disabled={status === 'connecting'}>
+                {status === 'connecting' ? 'Connecting…' : 'Connect'}
+              </button>
+            </form>
+          </>
         )}
-        {notice && <div className="phone-notice" role="status"><Check size={15} />{notice}</div>}
-        <p className="phone-privacy">Nexora never sends your data to the cloud.</p>
-      </main>
-    </div>
+      </section>
+    </main>
   )
 }

@@ -1,3 +1,5 @@
 node_modules/
 dist/
 *.tsbuildinfo
+src-tauri/resources/node-runtime/
+src-tauri/resources/bridge.cjs

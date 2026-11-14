@@ -1,6 +1,7 @@
 package com.nexora.android
 
 import android.app.Activity
+import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -57,7 +58,7 @@ class MainActivity : Activity() {
                     .put("type", "pair")
                     .put("code", code)
                     .put("deviceId", "android-${System.currentTimeMillis()}")
-                    .put("deviceName", "Android phone")
+                    .put("deviceName", Build.MODEL?.takeIf { it.isNotBlank() } ?: "Android phone")
                 webSocket.send(message.toString())
             }
 

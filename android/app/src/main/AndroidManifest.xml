@@ -4,6 +4,7 @@
         android:theme="@style/Theme.Nexora"
         android:label="Nexora"
         android:allowBackup="false"
+        android:usesCleartextTraffic="true"
         android:supportsRtl="true">
         <activity
             android:name=".MainActivity"

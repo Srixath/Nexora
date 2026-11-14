@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { networkInterfaces } from 'node:os'
 import { WebSocketServer } from 'ws'
 
 const port = Number(process.env.NEXORA_PORT || 8787)
@@ -8,6 +9,9 @@ const pairingCode = String(Math.floor(100000 + Math.random() * 900000))
 const token = randomBytes(32).toString('hex')
 const peers = new Set()
 const pairedDevices = new Map()
+const lanAddress = Object.values(networkInterfaces())
+  .flatMap((addresses) => addresses || [])
+  .find((address) => address.family === 'IPv4' && !address.internal && !address.address.startsWith('169.254.'))?.address
 
 const send = (socket, message) => {
   if (socket.readyState === 1) socket.send(JSON.stringify({ version: 1, ...message }))
@@ -30,7 +34,7 @@ const json = (response, status, body) => {
 
 const httpServer = createServer((request, response) => {
   if (request.url === '/health') return json(response, 200, { ok: true, service: 'nexora-bridge', peers: peers.size })
-  if (request.url === '/pairing') return json(response, 200, { code: pairingCode, expiresInSeconds: 900 })
+  if (request.url === '/pairing') return json(response, 200, { code: pairingCode, host: lanAddress, expiresInSeconds: 900 })
   return json(response, 404, { error: 'not_found' })
 })
 
@@ -57,7 +61,15 @@ webSocketServer.on('connection', (socket) => {
       socket.deviceName = String(message.deviceName || 'Android device').slice(0, 80)
       pairedDevices.set(socket.deviceId, { name: socket.deviceName, pairedAt: new Date().toISOString() })
       send(socket, { type: 'paired', deviceId: socket.deviceId, deviceName: socket.deviceName, token })
-      broadcast({ type: 'device_connected', deviceId: socket.deviceId, deviceName: socket.deviceName }, socket)
+      if (socket.deviceId === 'nexora-desktop') {
+        for (const peer of peers) {
+          if (peer !== socket && peer.authenticated && peer.deviceId !== 'nexora-desktop') {
+            send(socket, { type: 'device_connected', deviceId: peer.deviceId, deviceName: peer.deviceName })
+          }
+        }
+      } else {
+        broadcast({ type: 'device_connected', deviceId: socket.deviceId, deviceName: socket.deviceName }, socket)
+      }
       return
     }
 
