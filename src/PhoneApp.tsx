@@ -25,13 +25,16 @@ export default function PhoneApp() {
     const bridgeProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const socket = new WebSocket(`${bridgeProtocol}//${window.location.hostname}:8787`)
     socketRef.current = socket
-    socket.onopen = () => socket.send(JSON.stringify({
-      version: 1,
-      type: 'pair',
-      code,
-      deviceId: `android-${crypto.randomUUID()}`,
-      deviceName: name.trim() || 'Android phone',
-    }))
+    socket.onopen = () => {
+      const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      socket.send(JSON.stringify({
+        version: 1,
+        type: 'pair',
+        code,
+        deviceId: `android-${id}`,
+        deviceName: name.trim() || 'Android phone',
+      }))
+    }
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as Message
