@@ -84,6 +84,6 @@ jobs:
           body: Windows installer and Android APK for Nexora ${{ github.ref_name }}.
           prerelease: true
           files: |
-            release/windows/*.msi
-            release/windows/*.exe
+            release/windows/**/*.msi
+            release/windows/**/*.exe
             release/android/*.apk
