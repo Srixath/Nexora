@@ -46,8 +46,7 @@ fn open_google_messages(app: tauri::AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    let url = "https://messages.google.com/web"
-        .parse()
+    let url = url::Url::parse("https://messages.google.com/web")
         .map_err(|error| error.to_string())?;
     tauri::WebviewWindowBuilder::new(
         &app,
