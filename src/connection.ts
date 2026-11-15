@@ -3,6 +3,13 @@ import { useEffect, useRef, useState } from 'react'
 export type ConnectionStatus = 'offline' | 'connecting' | 'online' | 'paired'
 export type BridgeMessage = { type: string; [key: string]: unknown }
 
+function getBridgeHost() {
+  const hostname = window.location.hostname || '127.0.0.1'
+  // Windows resolves localhost to ::1 first, while the bridge binds IPv4.
+  // Use an explicit IPv4 loopback address for the desktop's local bridge.
+  return hostname === 'localhost' || hostname.endsWith('.localhost') ? '127.0.0.1' : hostname
+}
+
 export function useConnection(onMessage: (message: BridgeMessage) => void, deviceName = 'Nexora desktop') {
   const socketRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
@@ -20,7 +27,7 @@ export function useConnection(onMessage: (message: BridgeMessage) => void, devic
     let closed = false
     const connect = () => {
       setStatus('connecting')
-      const bridgeHost = window.location.hostname || '127.0.0.1'
+      const bridgeHost = getBridgeHost()
       const socket = new WebSocket(import.meta.env.VITE_NEXORA_BRIDGE || `ws://${bridgeHost}:8787`)
       socketRef.current = socket
       socket.onopen = () => {
@@ -53,7 +60,7 @@ export function useConnection(onMessage: (message: BridgeMessage) => void, devic
         if (!closed) retryTimer = window.setTimeout(connect, 2000)
       }
     }
-    const bridgeHost = window.location.hostname || '127.0.0.1'
+    const bridgeHost = getBridgeHost()
     const loadPairing = () => {
       fetch((import.meta.env.VITE_NEXORA_HTTP || `http://${bridgeHost}:8787`) + '/pairing')
         .then((response) => {
