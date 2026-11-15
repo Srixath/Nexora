@@ -47,7 +47,7 @@ export function useConnection(onMessage: (message: BridgeMessage) => void, devic
           onMessageRef.current(message)
         } catch { setLastError('Received an invalid bridge message.') }
       }
-      socket.onerror = () => setLastError('Bridge is unavailable. Start npm run bridge.')
+      socket.onerror = () => setLastError('The local connection is starting or unavailable. Nexora will retry automatically.')
       socket.onclose = () => {
         setStatus('offline')
         if (!closed) retryTimer = window.setTimeout(connect, 2000)
