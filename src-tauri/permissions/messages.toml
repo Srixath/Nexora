@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-open-google-messages"
+description = "Allows the Nexora window to open the Google Messages web client."
+commands.allow = ["open_google_messages"]
