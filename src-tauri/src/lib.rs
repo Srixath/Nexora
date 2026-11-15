@@ -1,13 +1,8 @@
-#[cfg(not(debug_assertions))]
 use std::{process::Child, sync::Mutex};
+use tauri::Manager;
 
-#[cfg(not(debug_assertions))]
-use tauri::{path::BaseDirectory, Manager};
-
-#[cfg(not(debug_assertions))]
 struct BridgeProcess(Mutex<Option<Child>>);
 
-#[cfg(not(debug_assertions))]
 impl Drop for BridgeProcess {
     fn drop(&mut self) {
         if let Ok(mut child) = self.0.lock() {
@@ -20,15 +15,25 @@ impl Drop for BridgeProcess {
 }
 
 pub fn run() {
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default().setup(|app| {
+        #[cfg(debug_assertions)]
+        let mut command = {
+            let mut command = std::process::Command::new("node");
+            command.arg(concat!(env!("CARGO_MANIFEST_DIR"), "/../server/bridge.mjs"));
+            command
+        };
 
-    #[cfg(not(debug_assertions))]
-    let builder = builder.setup(|app| {
-        let node = app.path().resolve("resources/node-runtime/node.exe", BaseDirectory::Resource)?;
-        let bridge = app.path().resolve("resources/bridge.cjs", BaseDirectory::Resource)?;
-        let mut command = std::process::Command::new(node);
+        #[cfg(not(debug_assertions))]
+        let mut command = {
+            let resources = app.path().resource_dir()?;
+            let node = resources.join("node-runtime").join("node.exe");
+            let bridge = resources.join("bridge.cjs");
+            let mut command = std::process::Command::new(node);
+            command.arg(bridge);
+            command
+        };
+
         command
-            .arg(bridge)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null());

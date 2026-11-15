@@ -155,6 +155,11 @@ h1 span { color: #f4b545; font-size: 20px; vertical-align: 2px; }
 .qr-placeholder { min-height: 136px; display: grid; place-items: center; gap: 8px; margin-bottom: 18px; border: 1px dashed #cbd2e7; border-radius: 12px; background: #fafbff; color: var(--muted); font-size: 10px; }
 .qr-pattern { width: 72px; height: 72px; opacity: .8; background: repeating-linear-gradient(45deg, #6876d8 0 4px, transparent 4px 9px), repeating-linear-gradient(-45deg, #6876d8 0 3px, transparent 3px 8px); }
 .pairing-code { padding: 12px 0 8px; color: #5362e9; font: 800 30px/1 Manrope, sans-serif; letter-spacing: 7px; }
+.pairing-code-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.pairing-code-row .pairing-code { min-width: 150px; }
+.copy-pairing-code { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid #e1e5f1; border-radius: 8px; color: #5866dc; background: #fff; font-size: 11px; font-weight: 600; }
+.copy-pairing-code:disabled { opacity: .45; cursor: wait; }
+.copy-pairing-code:not(:disabled):hover { background: #f5f6ff; }
 .pairing-status { min-height: 18px; margin-bottom: 18px; color: var(--muted); font-size: 11px; }
 .full { width: 100%; }
 .modal-secondary { margin-top: 13px; color: var(--muted); background: transparent; font-size: 11px; }

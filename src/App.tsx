@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Check, Smartphone, Zap } from 'lucide-react'
+import { Check, Copy, Smartphone, Zap } from 'lucide-react'
 import { useConnection } from './connection'
 
 function App() {
   const [connectedDevice, setConnectedDevice] = useState('')
+  const [copied, setCopied] = useState(false)
   const { status, pairingCode, bridgeHost, lastError } = useConnection((message) => {
     if (message.type === 'device_connected') {
       setConnectedDevice(String(message.deviceName || 'Android phone'))
@@ -19,7 +20,18 @@ function App() {
         ? 'Bridge ready. Open Nexora on your phone to connect.'
         : status === 'connecting'
           ? 'Connecting to bridge…'
-          : 'Bridge offline. Start npm run bridge.'
+          : 'Starting the local connection…'
+
+  const copyPairingCode = async () => {
+    if (!pairingCode) return
+    try {
+      await navigator.clipboard.writeText(pairingCode)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1800)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   return (
     <main className="phone-app">
@@ -37,8 +49,14 @@ function App() {
             <label htmlFor="windows-address">Windows address</label>
             <div id="windows-address" className="pairing-url">{bridgeHost || 'Finding laptop address…'}</div>
             <label htmlFor="desktop-pairing-code">Pairing code</label>
-            <div id="desktop-pairing-code" className="pairing-code">{pairingCode || '------'}</div>
-            <p className="phone-privacy">Open Nexora on Android and enter these details.</p>
+            <div className="pairing-code-row">
+              <div id="desktop-pairing-code" className="pairing-code" aria-live="polite">{pairingCode || '------'}</div>
+              <button className="copy-pairing-code" type="button" onClick={copyPairingCode} disabled={!pairingCode} aria-label="Copy pairing code">
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <p className="phone-privacy">Open Nexora on Android and enter the Windows address and this code.</p>
           </div>
         )}
         {connectedDevice && <div className="phone-notice"><Check size={15} /> Your phone is connected to Nexora.</div>}
