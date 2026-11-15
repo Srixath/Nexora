@@ -1,9 +1,6 @@
 use std::{process::Child, sync::Mutex};
 use tauri::Manager;
 
-#[cfg(not(debug_assertions))]
-use tauri::path::BaseDirectory;
-
 struct BridgeProcess(Mutex<Option<Child>>);
 
 impl Drop for BridgeProcess {
@@ -28,8 +25,9 @@ pub fn run() {
 
         #[cfg(not(debug_assertions))]
         let mut command = {
-            let node = app.path().resolve("resources/node-runtime/node.exe", BaseDirectory::Resource)?;
-            let bridge = app.path().resolve("resources/bridge.cjs", BaseDirectory::Resource)?;
+            let resources = app.path().resource_dir()?;
+            let node = resources.join("node-runtime").join("node.exe");
+            let bridge = resources.join("bridge.cjs");
             let mut command = std::process::Command::new(node);
             command.arg(bridge);
             command
