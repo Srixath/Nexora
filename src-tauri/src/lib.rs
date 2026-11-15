@@ -1,4 +1,10 @@
-use std::{process::Child, sync::Mutex};
+use std::{
+    fs::{self, OpenOptions},
+    io::Write,
+    path::PathBuf,
+    process::{Child, Stdio},
+    sync::Mutex,
+};
 use tauri::Manager;
 
 struct BridgeProcess(Mutex<Option<Child>>);
@@ -14,6 +20,23 @@ impl Drop for BridgeProcess {
     }
 }
 
+fn bridge_log_path() -> PathBuf {
+    let base = std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    base.join("Nexora").join("bridge.log")
+}
+
+fn log_bridge_error(message: &str) {
+    let path = bridge_log_path();
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if let Ok(mut log) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(log, "{message}");
+    }
+}
+
 pub fn run() {
     let builder = tauri::Builder::default().setup(|app| {
         #[cfg(debug_assertions)]
@@ -25,25 +48,56 @@ pub fn run() {
 
         #[cfg(not(debug_assertions))]
         let mut command = {
-            let resources = app.path().resource_dir()?;
+            let executable = std::env::current_exe()?;
+            let install_dir = executable
+                .parent()
+                .ok_or_else(|| std::io::Error::other("Nexora install folder could not be found"))?;
+            let resources = install_dir.join("resources");
             let node = resources.join("node-runtime").join("node.exe");
             let bridge = resources.join("bridge.cjs");
+            if !node.is_file() || !bridge.is_file() {
+                log_bridge_error(&format!(
+                    "Bundled bridge files were not found. Node: {}. Bridge: {}.",
+                    node.display(),
+                    bridge.display()
+                ));
+            }
             let mut command = std::process::Command::new(node);
             command.arg(bridge);
             command
         };
 
-        command
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null());
+        command.stdin(Stdio::null());
+
+        let log_path = bridge_log_path();
+        if let Some(parent) = log_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        if let Ok(log) = OpenOptions::new().create(true).append(true).open(&log_path) {
+            if let Ok(stderr) = log.try_clone() {
+                command.stdout(Stdio::from(log)).stderr(Stdio::from(stderr));
+            } else {
+                command.stdout(Stdio::null()).stderr(Stdio::null());
+            }
+        } else {
+            command.stdout(Stdio::null()).stderr(Stdio::null());
+        }
         #[cfg(target_os = "windows")]
         {
             use std::os::windows::process::CommandExt;
             command.creation_flags(0x08000000);
         }
-        let process = command.spawn()?;
-        app.manage(BridgeProcess(Mutex::new(Some(process))));
+        let process = match command.spawn() {
+            Ok(process) => {
+                log_bridge_error("Bridge process started.");
+                Some(process)
+            }
+            Err(error) => {
+                log_bridge_error(&format!("Could not start bridge process: {error}"));
+                None
+            }
+        };
+        app.manage(BridgeProcess(Mutex::new(process)));
         Ok(())
     });
 
