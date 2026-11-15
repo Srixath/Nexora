@@ -6,6 +6,7 @@ use std::{
     sync::Mutex,
 };
 use tauri::Manager;
+use tauri_plugin_opener::OpenerExt;
 
 struct BridgeProcess(Mutex<Option<Child>>);
 
@@ -39,32 +40,14 @@ fn log_bridge_error(message: &str) {
 
 #[tauri::command]
 fn open_google_messages(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("google-messages") {
-        window.unminimize().map_err(|error| error.to_string())?;
-        window.show().map_err(|error| error.to_string())?;
-        window.set_focus().map_err(|error| error.to_string())?;
-        return Ok(());
-    }
-
-    let url = url::Url::parse("https://messages.google.com/web")
-        .map_err(|error| error.to_string())?;
-    tauri::WebviewWindowBuilder::new(
-        &app,
-        "google-messages",
-        tauri::WebviewUrl::External(url),
-    )
-    .title("Google Messages")
-    .inner_size(1120.0, 780.0)
-    .min_inner_size(720.0, 560.0)
-    .center()
-    .build()
-    .map_err(|error| error.to_string())?;
-
-    Ok(())
+    app.opener()
+        .open_url("https://messages.google.com/web", None::<&str>)
+        .map_err(|error| error.to_string())
 }
 
 pub fn run() {
     let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![open_google_messages])
         .setup(|app| {
             #[cfg(debug_assertions)]

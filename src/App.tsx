@@ -79,14 +79,14 @@ function App() {
           <div className="google-messages-icon"><MessageCircle size={19} /></div>
           <div className="google-messages-copy">
             <strong>Google Messages</strong>
-            <span>Open your chats and RCS group conversations in Nexora.</span>
+            <span>Open Google Messages in your browser to use chats and RCS group conversations.</span>
           </div>
           <button className="google-messages-button" type="button" onClick={openGoogleMessages}>
-            Open <ArrowUpRight size={15} />
+            Open in browser <ArrowUpRight size={15} />
           </button>
         </div>
         {messagesError && <p className="google-messages-error" role="alert">{messagesError}</p>}
-        <p className="google-messages-note">Sign in and pair your phone in the Google Messages window.</p>
+        <p className="google-messages-note">Google Messages needs a supported browser for sign-in and phone pairing.</p>
       </section>
     </main>
   )
